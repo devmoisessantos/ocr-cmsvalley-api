@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from models import OCRResponse, ErrorResponse
-from ocr import extrair_medicos_do_print
+from ocr import extrair_medicos_do_print, OcrIndisponivelError
 
 app = FastAPI(
     title="CMS Valley - EMS OCR Service",
@@ -73,7 +73,7 @@ def health():
 @app.post(
     "/ocr/ems",
     response_model=OCRResponse,
-    responses={400: {"model": ErrorResponse}},
+    responses={400: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
 )
 async def ocr_ems(file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -87,5 +87,9 @@ async def ocr_ems(file: UploadFile = File(...)):
         resultado = extrair_medicos_do_print(image_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except OcrIndisponivelError as exc:
+        # o Space de terceiro que faz o OCR está fora do ar/não respondeu —
+        # isso não é um erro do arquivo enviado, é do serviço externo
+        raise HTTPException(status_code=503, detail=str(exc))
 
     return resultado

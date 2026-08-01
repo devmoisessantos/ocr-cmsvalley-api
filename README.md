@@ -12,7 +12,7 @@ de OCR e devolve o resultado pronto.
 ems-ocr-service/
 ├── api/                    → FastAPI: recebe a imagem, roda o OCR, devolve JSON
 │   ├── main.py             → endpoints da API
-│   ├── ocr.py              → pipeline de OCR (OpenCV + EasyOCR + parsing)
+│   ├── ocr.py              → chama o Space DeepSeek-OCR (gradio_client) + parsing
 │   └── models.py           → schemas de request/response (Pydantic)
 ├── site/                   → página simples pra testar o OCR manualmente (upload → resultado)
 │   ├── index.html
@@ -57,6 +57,32 @@ O site em `site/index.html` pode ser aberto direto no navegador — ele busca
 a lista de rotas em `GET /routes` sozinho. Tem um campo "URL da API" no
 canto inferior do menu caso a API não esteja em `http://127.0.0.1:8000`.
 
+## Motor de OCR: DeepSeek-OCR via Space da comunidade (decisão atual)
+
+O `api/ocr.py` chama o Space público `khang119966/DeepSeek-OCR-DEMO` (via
+`gradio_client`) em vez de rodar qualquer modelo localmente. Decisão
+consciente, com esse trade-off:
+
+- **A favor:** grátis, e nos testes leu a fonte do HUD do EMS melhor que o
+  EasyOCR (23/23 IDs certos numa das prints testadas, incluindo um caso que
+  o EasyOCR lia errado).
+- **Contra:** a API agora **depende de um serviço de terceiro**, hospedado
+  por uma pessoa da comunidade — sem SLA, sujeito à fila/cota de GPU
+  compartilhada com qualquer visitante do Space, e pode sair do ar ou mudar
+  a API sem aviso. Se isso acontecer, `/ocr/ems` passa a devolver `503`
+  (ver `OcrIndisponivelError` em `ocr.py`) até alguém trocar o Space via
+  env var `DEEPSEEK_OCR_SPACE` ou reverter pro EasyOCR local.
+
+Chegamos a testar o EasyOCR + OpenCV (funcionava, mais leve, 100% sob seu
+controle) e o modelo `baidu/Unlimited-OCR` rodando localmente (descartado —
+estourava memória no Render). Se um dia o Space da comunidade cair de vez,
+o caminho de volta é reimplementar `ocr.py` no modelo EasyOCR (a versão
+anterior está registrada no histórico do Git/conversa).
+
+Como a API não roda mais nenhum modelo pesado localmente — só faz uma
+chamada HTTP pro Space — o **free tier do Render volta a ser suficiente**
+(nada de estouro de memória aqui).
+
 ## IDs suspeitos: a API não descarta, ela sinaliza
 
 A API sabe que IDs FiveM desse servidor vão de 1 a 200000 — mas em vez de
@@ -82,6 +108,8 @@ tem acesso à lista real de membros do servidor pra cruzar e corrigir — ver
 O site também reflete isso: entradas suspeitas aparecem destacadas em
 vermelho na lista, com a tag "⚠ confira", em vez de somem calada.
 
+## Painel do site (pensado pra crescer)
+
 O `site/` não é mais uma página fixa só de upload — é um painel com menu
 lateral montado **dinamicamente** a partir do que a API expõe em `GET /routes`
 (`api/main.py`, variável `ROUTES_INFO`). Isso significa que, quando o projeto
@@ -102,4 +130,5 @@ campos de texto), aí sim vale estender o JS do `site/index.html` com um novo
 ## Variáveis de ambiente
 
 - `API_URL` (usado pelo bot em `ems_ocr_client.py`) — URL pública da API depois do deploy.
-- `OCR_LANGS` (opcional, default `pt`) — idiomas carregados pelo EasyOCR.
+- `DEEPSEEK_OCR_SPACE` (opcional, default `khang119966/DeepSeek-OCR-DEMO`) — Space do Hugging Face chamado pelo OCR. Troque aqui se esse Space sair do ar e outro similar aparecer.
+- `DEEPSEEK_OCR_MODEL_SIZE` (opcional, default `Gundam (Recommended)`) — resolução usada na inferência.

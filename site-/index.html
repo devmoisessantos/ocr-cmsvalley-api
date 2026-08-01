@@ -10,42 +10,27 @@
 
   <div class="app">
 
-  <aside class="nav">
-  <div class="nav__brand">
-    
-    <!-- Container que vai alinhar a Logo e o Texto lado a lado -->
-    <div class="nav__logo-wrapper">
-      
-      <div class="nav__logo">
-        <img src="/static/logo.png" alt="Logo do CMS Valley" width="48" height="48">
-      </div>
-      
-      <div class="nav__text">
-        <span class="nav__eyebrow">Centro Médico Sul<br>Valley</span>
+    <aside class="nav">
+      <div class="nav__brand">
+        <span class="nav__eyebrow">Centro Médico Sul Valley</span>
+        <h1 class="nav__title">Painel EMS OCR</h1>
       </div>
 
-    </div> <!-- Fecha o wrapper aqui -->
+      <nav class="nav__list" id="nav-list">
+        <!-- itens montados via JS a partir de GET /routes -->
+      </nav>
 
-    <!-- Título principal fica EMBAIXO do conjunto (Logo + Texto) -->
-    <h1 class="nav__title">Painel EMS OCR</h1>
+      <div class="nav__future">
+        <span class="nav__future-label">Em breve</span>
+        <p class="nav__future-item">Comparar com toggle do Discord</p>
+        <p class="nav__future-item">Histórico de chamadas EMS</p>
+      </div>
 
-  </div>
-
-    <nav class="nav__list" id="nav-list">
-      <!-- itens montados via JS a partir de GET /routes -->
-    </nav>
-
-    <div class="nav__future">
-      <span class="nav__future-label">Em breve</span>
-      <p class="nav__future-item">Comparar com toggle do Discord</p>
-      <p class="nav__future-item">Histórico de chamadas EMS</p>
-    </div>
-
-    <div class="nav__footer">
-      <label class="nav__api-label" for="api-base">URL da API</label>
-      <input class="nav__api-input" id="api-base" type="text" value="http://127.0.0.1:8000" spellcheck="false">
-    </div>
-  </aside>
+      <div class="nav__footer">
+        <label class="nav__api-label" for="api-base">URL da API</label>
+        <input class="nav__api-input" id="api-base" type="text" value="http://127.0.0.1:8000" spellcheck="false">
+      </div>
+    </aside>
 
     <main class="panel" id="panel">
       <p class="panel__empty">Carregando rotas da API...</p>
@@ -73,7 +58,7 @@
         montarNav();
         if (rotas.length) selecionarRota(rotas[0].id);
       } catch (err) {
-        navList.innerHTML = `<p class="nav__error">Não foi possível carregar as rotas. <br>A API está no ar em ${apiBase()}?</p>`;
+        navList.innerHTML = `<p class="nav__error">Não foi possível carregar as rotas. A API está no ar em ${apiBase()}?</p>`;
         panel.innerHTML = `<p class="panel__empty">Sem conexão com a API.</p>`;
       }
     }
