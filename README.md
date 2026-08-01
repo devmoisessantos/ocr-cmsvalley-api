@@ -53,9 +53,51 @@ Teste rápido:
 curl -X POST http://localhost:8000/ocr/ems -F "file=@print_ems.png"
 ```
 
-O site em `site/index.html` pode ser aberto direto no navegador (ajuste a
-constante `API_URL` no topo do arquivo pra apontar pro seu endpoint) pra
-testar o upload sem precisar do Discord.
+O site em `site/index.html` pode ser aberto direto no navegador — ele busca
+a lista de rotas em `GET /routes` sozinho. Tem um campo "URL da API" no
+canto inferior do menu caso a API não esteja em `http://127.0.0.1:8000`.
+
+## IDs suspeitos: a API não descarta, ela sinaliza
+
+A API sabe que IDs FiveM desse servidor vão de 1 a 200000 — mas em vez de
+jogar fora quem foge disso (podia ser um erro de OCR corrigível), ela manda
+a entrada mesmo assim, com `"suspeito": true` e um `"motivo_suspeita"`.
+Só é descartado de verdade quem **não bate com nenhum padrão `ID: Nome`**
+(vai pro campo `aviso`, contado à parte).
+
+Quem decide o que fazer com uma entrada suspeita é o **bot**, porque só ele
+tem acesso à lista real de membros do servidor pra cruzar e corrigir — ver
+`bot_integration/validacao_ids.py`. A estratégia usada lá:
+
+1. ID bate direto com um membro conhecido → confirmado.
+2. Não bate, mas bate depois de trocar 1 dígito confundível pela fonte do
+   HUD (ex: `710515` → `110515`, porque "7" e "1" se parecem nessa fonte)
+   → corrigido por dígito.
+3. Ainda não bate → tenta achar por nome (fuzzy match) entre os membros
+   conhecidos e usa o ID real de lá.
+4. Não bate de nenhuma forma → provavelmente é médico de outro hospital
+   (ex: Hospital Norte), igual já era tratado no fluxo de chamada de
+   verificação.
+
+O site também reflete isso: entradas suspeitas aparecem destacadas em
+vermelho na lista, com a tag "⚠ confira", em vez de somem calada.
+
+O `site/` não é mais uma página fixa só de upload — é um painel com menu
+lateral montado **dinamicamente** a partir do que a API expõe em `GET /routes`
+(`api/main.py`, variável `ROUTES_INFO`). Isso significa que, quando o projeto
+crescer (ex: comparar com o toggle do Discord, ver histórico de chamadas),
+o processo é:
+
+1. Criar o endpoint novo normalmente em `api/main.py`.
+2. Adicionar uma entrada em `ROUTES_INFO` com um `tipo`:
+   - `status` — botão "Testar", mostra o JSON puro (bom pra healthchecks).
+   - `upload_imagem` — área de drag-and-drop de imagem (usado hoje pelo OCR do EMS).
+   - `acao_simples` — botão "Executar" pra rotas sem parâmetro.
+3. Pronto — o painel já mostra a nova rota no menu, sem tocar em HTML/JS.
+
+Se um tipo novo de ação não se encaixar nesses três (ex: um formulário com
+campos de texto), aí sim vale estender o JS do `site/index.html` com um novo
+`tipo`.
 
 ## Variáveis de ambiente
 
