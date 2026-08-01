@@ -1,9 +1,13 @@
+from pathlib import Path
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from models import OCRResponse, ErrorResponse
 from ocr import extrair_medicos_do_print, OcrIndisponivelError
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="CMS Valley - EMS OCR Service",
@@ -54,11 +58,6 @@ ROUTES_INFO = [
 ]
 
 
-@app.get("/")
-def root():
-    return RedirectResponse(url="/docs")
-
-
 @app.get("/routes")
 def listar_rotas():
     """Metadados usados pelo painel (site/) pra montar o menu automaticamente."""
@@ -93,3 +92,10 @@ async def ocr_ems(file: UploadFile = File(...)):
         raise HTTPException(status_code=503, detail=str(exc))
 
     return resultado
+
+
+# O painel é servido pela própria API (um único deploy serve site + API).
+# Precisa ficar no fim do arquivo: o mount em "/" captura tudo que não bateu
+# com as rotas declaradas acima.
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.mount("/", StaticFiles(directory=BASE_DIR / "site-", html=True), name="site")
