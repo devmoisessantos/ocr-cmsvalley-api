@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS Valley — Leitor de Chamada EMS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <main class="stage">
+    <header class="stage__header">
+      <span class="stage__eyebrow">Centro Médico Sul Valley</span>
+      <h1 class="stage__title">Leitor de Chamada EMS</h1>
+      <p class="stage__subtitle">Envie o print do comando <code>/ems</code> e receba a lista ID : Nome já separada.</p>
+    </header>
+
+    <section class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <div class="dropzone__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="32" height="32">
+          <path fill="currentColor" d="M12 3l5 5h-3v6h-4V8H7l5-5zm-7 14h14v2H5v-2z"/>
+        </svg>
+      </div>
+      <p class="dropzone__text">Arraste o print aqui ou <span class="dropzone__link">escolha um arquivo</span></p>
+      <p class="dropzone__hint">PNG ou JPG do painel de notificação in-game</p>
+    </section>
+
+    <section class="preview" id="preview" hidden>
+      <img id="preview-img" alt="Pré-visualização do print enviado">
+    </section>
+
+    <!-- Painel de resultado no mesmo estilo do HUD "Atenção" do jogo -->
+    <section class="hud" id="hud" hidden>
+      <div class="hud__bar"></div>
+      <div class="hud__body">
+        <div class="hud__title-row">
+          <span class="hud__clock" id="hud-clock">5s</span>
+          <span class="hud__title">Atenção</span>
+          <span class="hud__info" aria-hidden="true">ⓘ</span>
+        </div>
+        <p class="hud__summary" id="hud-summary">Atualmente 0 Médicos no jogo.</p>
+        <ol class="hud__list" id="hud-list"></ol>
+        <p class="hud__warning" id="hud-warning" hidden></p>
+      </div>
+    </section>
+
+    <p class="status" id="status" hidden></p>
+  </main>
+
+  <script>
+    // Ajuste pra URL pública da API depois do deploy no Render
+    const API_URL = "http://localhost:8000/ocr/ems";
+
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("file-input");
+    const preview = document.getElementById("preview");
+    const previewImg = document.getElementById("preview-img");
+    const hud = document.getElementById("hud");
+    const hudClock = document.getElementById("hud-clock");
+    const hudSummary = document.getElementById("hud-summary");
+    const hudList = document.getElementById("hud-list");
+    const hudWarning = document.getElementById("hud-warning");
+    const statusEl = document.getElementById("status");
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("is-active"); });
+    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("is-active"));
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("is-active");
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      previewImg.src = URL.createObjectURL(file);
+      preview.hidden = false;
+      enviarParaAPI(file);
+    }
+
+    async function enviarParaAPI(file) {
+      setStatus("Processando print...", false);
+      hud.hidden = true;
+
+      const form = new FormData();
+      form.append("file", file);
+
+      try {
+        const res = await fetch(API_URL, { method: "POST", body: form });
+        const data = await res.json();
+
+        if (!res.ok) {
+          setStatus(data.erro || "Erro ao processar a imagem.", true);
+          return;
+        }
+
+        renderHud(data);
+        setStatus("", false);
+      } catch (err) {
+        setStatus("Não foi possível falar com a API. Ela está no ar?", true);
+      }
+    }
+
+    function renderHud(data) {
+      hudSummary.textContent = `Atualmente ${data.total_detectado} Médicos no jogo.`;
+      hudList.innerHTML = "";
+      data.medicos.forEach((m) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="hud__id">${m.id}:</span> ${m.nome}`;
+        hudList.appendChild(li);
+      });
+
+      if (data.aviso) {
+        hudWarning.textContent = data.aviso;
+        hudWarning.hidden = false;
+      } else {
+        hudWarning.hidden = true;
+      }
+
+      hud.hidden = false;
+    }
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.hidden = !msg;
+      statusEl.classList.toggle("status--error", isError);
+    }
+  </script>
+</body>
+</html>
