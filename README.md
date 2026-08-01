@@ -24,7 +24,7 @@ ems-ocr-service/
 │   ├── main.py             → endpoints da API
 │   ├── ocr.py              → chama o Space DeepSeek-OCR (gradio_client) + parsing
 │   └── models.py           → schemas de request/response (Pydantic)
-├── site-/                  → painel de teste, servido pela própria API em `/`
+├── site/                   → painel de teste, servido pela própria API em `/`
 │   ├── index.html
 │   └── style.css
 ├── bot_integration/
@@ -64,7 +64,7 @@ Teste rápido:
 curl -X POST http://localhost:8000/ocr/ems -F "file=@print_ems.png"
 ```
 
-O painel em `site-/index.html` pode ser aberto direto no navegador — ele busca
+O painel em `site/index.html` pode ser aberto direto no navegador — ele busca
 a lista de rotas em `GET /routes` sozinho. A própria API também serve o painel
 em `/` (é o que roda em produção), e nesse caso o campo "URL da API" já vem
 preenchido com a origem atual; aberto como arquivo local, ele cai em

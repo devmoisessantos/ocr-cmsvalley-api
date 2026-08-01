@@ -98,4 +98,4 @@ async def ocr_ems(file: UploadFile = File(...)):
 # Precisa ficar no fim do arquivo: o mount em "/" captura tudo que não bateu
 # com as rotas declaradas acima.
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-app.mount("/", StaticFiles(directory=BASE_DIR / "site-", html=True), name="site")
+app.mount("/", StaticFiles(directory=BASE_DIR / "site", html=True), name="site")
