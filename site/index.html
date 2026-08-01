@@ -58,7 +58,7 @@
         montarNav();
         if (rotas.length) selecionarRota(rotas[0].id);
       } catch (err) {
-        navList.innerHTML = `<p class="nav__error">Não foi possível carregar as rotas. A API está no ar em ${apiBase()}?</p>`;
+        navList.innerHTML = `<p class="nav__error">Não foi possível carregar as rotas. <br>A API está no ar em ${apiBase()}?</p>`;
         panel.innerHTML = `<p class="panel__empty">Sem conexão com a API.</p>`;
       }
     }

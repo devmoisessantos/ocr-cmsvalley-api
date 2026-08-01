@@ -57,31 +57,30 @@ O site em `site/index.html` pode ser aberto direto no navegador — ele busca
 a lista de rotas em `GET /routes` sozinho. Tem um campo "URL da API" no
 canto inferior do menu caso a API não esteja em `http://127.0.0.1:8000`.
 
-## Motor de OCR: DeepSeek-OCR via Space da comunidade (decisão atual)
+## Motor de OCR: OCR.space (padrão), com Spaces do HF como alternativa
 
-O `api/ocr.py` chama o Space público `khang119966/DeepSeek-OCR-DEMO` (via
-`gradio_client`) em vez de rodar qualquer modelo localmente. Decisão
-consciente, com esse trade-off:
+`OCR_PROVIDER` escolhe o motor, sem precisar editar código:
 
-- **A favor:** grátis, e nos testes leu a fonte do HUD do EMS melhor que o
-  EasyOCR (23/23 IDs certos numa das prints testadas, incluindo um caso que
-  o EasyOCR lia errado).
-- **Contra:** a API agora **depende de um serviço de terceiro**, hospedado
-  por uma pessoa da comunidade — sem SLA, sujeito à fila/cota de GPU
-  compartilhada com qualquer visitante do Space, e pode sair do ar ou mudar
-  a API sem aviso. Se isso acontecer, `/ocr/ems` passa a devolver `503`
-  (ver `OcrIndisponivelError` em `ocr.py`) até alguém trocar o Space via
-  env var `DEEPSEEK_OCR_SPACE` ou reverter pro EasyOCR local.
+- **`ocrspace`** (default) — [OCR.space](https://ocr.space/OCRAPI), serviço
+  dedicado de OCR com API key própria. É o mais estável dos três: cota
+  mensal documentada (25.000 conversões/mês grátis no Engine 1/2, 2.500 no
+  Engine 3), sem depender de Space de terceiro sem SLA. Precisa da env var
+  `OCRSPACE_API_KEY` — **nunca cole a chave real no `render.yaml` nem em
+  qualquer arquivo do repositório**, configure direto no painel do Render
+  (`sync: false` já deixa isso marcado no blueprint).
+- **`deepseek`** — Space da comunidade `khang119966/DeepSeek-OCR-DEMO`,
+  grátis mas sujeito a fila/cota compartilhada e pode sair do ar.
+- **`unlimited`** — Space oficial `baidu/Unlimited-OCR`. **Atenção:** o
+  adaptador desse aqui (`_rodar_unlimited` em `ocr.py`) ainda não foi
+  testado contra a API real — antes de usar em produção, confirma os nomes
+  dos parâmetros na página "Use via API" do Space.
 
-Chegamos a testar o EasyOCR + OpenCV (funcionava, mais leve, 100% sob seu
-controle) e o modelo `baidu/Unlimited-OCR` rodando localmente (descartado —
-estourava memória no Render). Se um dia o Space da comunidade cair de vez,
-o caminho de volta é reimplementar `ocr.py` no modelo EasyOCR (a versão
-anterior está registrada no histórico do Git/conversa).
+Pra trocar de motor: muda a env var `OCR_PROVIDER` no Render (`ocrspace`,
+`deepseek` ou `unlimited`) e reinicia o serviço — nenhum código muda.
 
-Como a API não roda mais nenhum modelo pesado localmente — só faz uma
-chamada HTTP pro Space — o **free tier do Render volta a ser suficiente**
-(nada de estouro de memória aqui).
+Histórico: já testamos EasyOCR + OpenCV local (funcionava, mas exigia a
+fonte pesada de dependências) e `baidu/Unlimited-OCR` rodando localmente via
+`transformers` (descartado — estourava memória no Render).
 
 ## IDs suspeitos: a API não descarta, ela sinaliza
 
@@ -127,8 +126,26 @@ Se um tipo novo de ação não se encaixar nesses três (ex: um formulário com
 campos de texto), aí sim vale estender o JS do `site/index.html` com um novo
 `tipo`.
 
+## Vercel tentando rodar a API (não faça isso)
+
+A Vercel detecta automaticamente qualquer pasta `api/` com arquivos `.py`
+e tenta rodar como Serverless Function — isso acontece **antes** de olhar
+pro `vercel.json`, então mesmo com `outputDirectory: "site"` configurado
+ela ainda tentava invocar `api/main.py`, e crashava
+(`FUNCTION_INVOCATION_FAILED`), já que o `requirements.txt` fica na raiz,
+não dentro de `api/`, e a API nunca foi feita pra rodar como função
+serverless mesmo.
+
+O `.vercelignore` na raiz resolve isso, excluindo `api/`, `bot_integration/`,
+`requirements.txt` e `render.yaml` do que a Vercel enxerga — ela passa a
+servir só o `site/` estático, como sempre foi o plano. A API continua
+rodando exclusivamente no Render.
+
 ## Variáveis de ambiente
 
 - `API_URL` (usado pelo bot em `ems_ocr_client.py`) — URL pública da API depois do deploy.
-- `DEEPSEEK_OCR_SPACE` (opcional, default `khang119966/DeepSeek-OCR-DEMO`) — Space do Hugging Face chamado pelo OCR. Troque aqui se esse Space sair do ar e outro similar aparecer.
-- `DEEPSEEK_OCR_MODEL_SIZE` (opcional, default `Gundam (Recommended)`) — resolução usada na inferência.
+- `OCR_PROVIDER` (opcional, default `ocrspace`) — qual motor usar: `ocrspace`, `deepseek` ou `unlimited`.
+- `OCRSPACE_API_KEY` — **obrigatória** se `OCR_PROVIDER=ocrspace`. Cole a chave real só no painel do Render, nunca em arquivo do repositório.
+- `OCRSPACE_LANGUAGE` (opcional, default `por`) / `OCRSPACE_ENGINE` (opcional, default `2`).
+- `DEEPSEEK_OCR_SPACE` / `DEEPSEEK_OCR_MODEL_SIZE` — usados só se `OCR_PROVIDER=deepseek`.
+- `UNLIMITED_OCR_SPACE` / `UNLIMITED_OCR_MODE` — usados só se `OCR_PROVIDER=unlimited`.

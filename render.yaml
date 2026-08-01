@@ -6,6 +6,14 @@ services:
     buildCommand: pip install -r ../requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: OCR_PROVIDER
+        value: ocrspace
+      - key: OCRSPACE_API_KEY
+        sync: false  
+      - key: OCRSPACE_LANGUAGE
+        value: por
+      - key: OCRSPACE_ENGINE
+        value: "2"
       - key: DEEPSEEK_OCR_SPACE
         value: khang119966/DeepSeek-OCR-DEMO
     plan: free
