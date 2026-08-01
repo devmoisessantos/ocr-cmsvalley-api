@@ -1,3 +1,13 @@
+---
+title: EMS OCR CMS Valley
+emoji: 🚑
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # EMS OCR Service — CMS Valley
 
 Serviço separado (API + site de teste) que recebe o print do comando **EMS**
@@ -14,21 +24,22 @@ ems-ocr-service/
 │   ├── main.py             → endpoints da API
 │   ├── ocr.py              → chama o Space DeepSeek-OCR (gradio_client) + parsing
 │   └── models.py           → schemas de request/response (Pydantic)
-├── site/                   → página simples pra testar o OCR manualmente (upload → resultado)
+├── site/                   → painel de teste, servido pela própria API em `/`
 │   ├── index.html
 │   └── style.css
 ├── bot_integration/
 │   └── ems_ocr_client.py   → módulo pronto pra COLAR dentro do cmsvalley-bot existente
 ├── requirements.txt
+├── Dockerfile              → deploy de API + painel em qualquer host de container
 ├── render.yaml             → deploy da API no Render
-├── vercel.json             → deploy do site estático no Vercel
+├── vercel.json             → deploy do painel estático no Vercel
 └── .gitignore
 ```
 
 ## Como isso se encaixa no cmsvalley-bot
 
-1. Este serviço (`api/`) sobe sozinho no Render, com sua própria URL
-   (ex: `https://ems-ocr.onrender.com`).
+1. Este serviço (`api/`) sobe sozinho, com sua própria URL
+   (ex: `https://ems-ocr.onrender.com`) — ver "Deploy" abaixo.
 2. Dentro do repositório do **cmsvalley-bot já existente**, você copia o arquivo
    `bot_integration/ems_ocr_client.py` pra dentro da pasta de utils/services do bot.
 3. No cog que já cuida da chamada de verificação/plantão médico, você importa
@@ -53,9 +64,31 @@ Teste rápido:
 curl -X POST http://localhost:8000/ocr/ems -F "file=@print_ems.png"
 ```
 
-O site em `site/index.html` pode ser aberto direto no navegador — ele busca
-a lista de rotas em `GET /routes` sozinho. Tem um campo "URL da API" no
-canto inferior do menu caso a API não esteja em `http://127.0.0.1:8000`.
+O painel em `site/index.html` pode ser aberto direto no navegador — ele busca
+a lista de rotas em `GET /routes` sozinho, usando o endereço do campo "URL da
+API" no rodapé do menu (troque pra `http://127.0.0.1:8000` ao testar local).
+A própria API também serve esse mesmo painel em `/`, caso você não queira um
+deploy separado do estático.
+
+## Deploy
+
+Hoje a API roda no Render (`render.yaml`) e o painel no Vercel (`vercel.json`
++ `.vercelignore`), apontando pro endereço fixo no campo "URL da API" do
+`site/index.html`.
+
+Como o OCR pesado foi terceirizado pro Space do DeepSeek, as dependências
+cabem em qualquer free tier — e, como a API também serve o painel em `/`, dá
+pra usar um deploy só. Outras opções:
+
+- **Hugging Face Spaces** (free, sem cartão) — crie um Space com **SDK:
+  Docker**, gere um token em https://huggingface.co/settings/tokens e rode
+  `git remote add space https://<usuario>:<token>@huggingface.co/spaces/<usuario>/<space>`
+  seguido de `git push space main`. O bloco YAML no topo deste README é a
+  configuração lida pelo HF (`sdk: docker`, `app_port: 7860`) — não remova.
+- **Qualquer host de container** (VPS, Koyeb, Oracle Cloud):
+  `docker build -t ems-ocr . && docker run -p 7860:7860 ems-ocr`.
+
+Depois do deploy, coloque a URL pública na env var `API_URL` do `cmsvalley-bot`.
 
 ## Motor de OCR: OCR.space (padrão), com Spaces do HF como alternativa
 
@@ -149,3 +182,4 @@ rodando exclusivamente no Render.
 - `OCRSPACE_LANGUAGE` (opcional, default `por`) / `OCRSPACE_ENGINE` (opcional, default `2`).
 - `DEEPSEEK_OCR_SPACE` / `DEEPSEEK_OCR_MODEL_SIZE` — usados só se `OCR_PROVIDER=deepseek`.
 - `UNLIMITED_OCR_SPACE` / `UNLIMITED_OCR_MODE` — usados só se `OCR_PROVIDER=unlimited`.
+- `PORT` (opcional, default `7860`) — porta que o uvicorn escuta no container.
