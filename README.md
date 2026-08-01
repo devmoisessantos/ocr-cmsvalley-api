@@ -32,7 +32,7 @@ ems-ocr-service/
 ├── requirements.txt
 ├── Dockerfile              → deploy de API + painel em qualquer host de container
 ├── render.yaml             → deploy da API no Render
-├── vercel.json             → deploy do site estático no Vercel (opcional: a API já serve o painel)
+├── vercel.json             → deploy do painel estático no Vercel
 └── .gitignore
 ```
 
@@ -65,21 +65,21 @@ curl -X POST http://localhost:8000/ocr/ems -F "file=@print_ems.png"
 ```
 
 O painel em `site/index.html` pode ser aberto direto no navegador — ele busca
-a lista de rotas em `GET /routes` sozinho. A própria API também serve o painel
-em `/` (é o que roda em produção), e nesse caso o campo "URL da API" já vem
-preenchido com a origem atual; aberto como arquivo local, ele cai em
-`http://127.0.0.1:8000`.
+a lista de rotas em `GET /routes` sozinho, usando o endereço do campo "URL da
+API" no rodapé do menu (troque pra `http://127.0.0.1:8000` ao testar local).
+A própria API também serve esse mesmo painel em `/`, caso você não queira um
+deploy separado do estático.
 
 ## Deploy
 
-A API serve o painel em `/`, então um deploy só já entrega API + site — não
-precisa mais de um deploy separado do estático.
+Hoje a API roda no Render (`render.yaml`) e o painel no Vercel (`vercel.json`
++ `.vercelignore`), apontando pro endereço fixo no campo "URL da API" do
+`site/index.html`.
 
 Como o OCR pesado foi terceirizado pro Space do DeepSeek, as dependências
-cabem em qualquer free tier. Opções, em ordem de simplicidade:
+cabem em qualquer free tier — e, como a API também serve o painel em `/`, dá
+pra usar um deploy só. Outras opções:
 
-- **Render** (`render.yaml` já pronto) — conecte o repositório e use o plano
-  free; o serviço hiberna depois de 15 min sem uso.
 - **Hugging Face Spaces** (free, sem cartão) — crie um Space com **SDK:
   Docker**, gere um token em https://huggingface.co/settings/tokens e rode
   `git remote add space https://<usuario>:<token>@huggingface.co/spaces/<usuario>/<space>`
